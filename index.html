@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Nhà Nghỉ Nguyên Bình</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 5px;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Quản Lý Nhà Nghỉ Nguyên Bình</h1>
+    <label>Số phòng: </label><input type="text" id="roomNumber" placeholder="VD: Phòng 101"><br>
+    <label>Giá mỗi giờ (VNĐ): </label><input type="number" id="pricePerHour" value="50000"><br>
+    <label>Số giờ thuê: </label><input type="number" id="hours" value="1" step="0.5"><br>
+    <label>Phụ phí giờ lẻ (VNĐ): </label><input type="number" id="extraFee" value="20000"><br>
+    <button onclick="calculateAndSync()">Tính tiền & Đồng bộ</button>
+    <p id="result"></p>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+
+    <script>
+        // Cấu hình Firebase của bạn
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuTXPfpZWzfGKQ7n8QXHop98YGdF8fNGY",
+            authDomain: "nha-nghi-nguyen-binh.firebaseapp.com",
+            projectId: "nha-nghi-nguyen-binh",
+            storageBucket: "nha-nghi-nguyen-binh.firebasestorage.app",
+            messagingSenderId: "765600989815",
+            appId: "1:765600989815:web:3053316c4162171f233c72",
+            measurementId: "G-9VP9Z2HRGV"
+        };
+
+        // Khởi tạo Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Hàm tính tiền và đồng bộ lên Firebase
+        function calculateAndSync() {
+            const roomNumber = document.getElementById("roomNumber").value;
+            const pricePerHour = parseInt(document.getElementById("pricePerHour").value);
+            const hours = parseFloat(document.getElementById("hours").value);
+            const extraFee = parseInt(document.getElementById("extraFee").value);
+
+            // Tính toán
+            const fullHours = Math.floor(hours);
+            const extraTime = hours - fullHours;
+            let total = pricePerHour * fullHours;
+            if (extraTime > 0) {
+                total += extraFee;
+            }
+
+            // Hiển thị kết quả
+            const resultText = `Phòng ${roomNumber} - Tổng tiền: ${total.toLocaleString()} VNĐ`;
+            document.getElementById("result").innerText = resultText;
+
+            // Đồng bộ lên Firebase
+            if (roomNumber) {
+                database.ref('bookings').push({
+                    roomNumber: roomNumber,
+                    pricePerHour: pricePerHour,
+                    hours: hours,
+                    extraFee: extraFee,
+                    total: total,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    console.log("Đồng bộ thành công!");
+                    // Xóa input sau khi đồng bộ
+                    document.getElementById("roomNumber").value = "";
+                    document.getElementById("hours").value = "1";
+                })
+                .catch((error) => {
+                    document.getElementById("result").innerText = "Lỗi đồng bộ: " + error.message;
+                });
+            } else {
+                document.getElementById("result").innerText = "Vui lòng nhập số phòng!";
+            }
+        }
+
+        // Lắng nghe dữ liệu từ Firebase (hiển thị trên console)
+        database.ref('bookings').on('value', (snapshot) => {
+            const bookings = snapshot.val();
+            console.log("Danh sách giao dịch:", bookings);
+        });
+    </script>
+</body>
+</html>
